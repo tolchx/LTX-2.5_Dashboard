@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LTX-2.5 Studio · Batch Video &amp; Audio</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- HEADER -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-logo" id="brand-logo">AI</div>
+        <div class="brand-text">
+          <div class="brand-title">LTX-2.5 &amp; MiniMax H3 <span class="badge badge-accent" id="active-engine-badge">Dual Engine · A/V</span></div>
+          <div class="brand-sub" id="health-sub">ComfyUI local · Batch por tomas y carpetas</div>
+        </div>
+      </div>
+
+      <div class="telemetry-strip">
+        <div class="pill-group" id="comfy-pill" title="Estado de ComfyUI (:8188)">
+          <span class="dot" id="comfy-dot"></span>
+          <span id="comfy-status-text">ComfyUI...</span>
+          <button class="btn-mini hidden" id="btn-start-comfy" title="Iniciar servidor ComfyUI">Iniciar</button>
+          <button class="btn-mini" id="btn-free-vram" title="Descargar modelos cacheados en VRAM de ComfyUI">Liberar VRAM</button>
+        </div>
+
+        <div class="pill-group" id="models-pill" title="Disponibilidad de pesos LTX-2.5">
+          <span class="dot" id="models-dot"></span>
+          <span id="models-status-text">Modelos...</span>
+        </div>
+
+        <div class="vram-meter" id="gpu-box" title="Uso de GPU y VRAM">
+          <div class="vram-top">
+            <span id="gpu-name">GPU</span>
+            <span class="mono" id="gpu-stats">-- / -- GB</span>
+          </div>
+          <div class="vram-bar"><div class="vram-fill" id="gpu-fill"></div></div>
+        </div>
+
+        <div class="pill-group mono" id="disk-pill" title="Espacio libre en disco de salidas">
+          <span id="disk-free">-- GB</span>
+        </div>
+      </div>
+
+      <div class="queue-controls">
+        <div class="counters mono">
+          <span class="cnt cnt-active" title="Ejecutando"><i class="pulse"></i><b id="cnt-active">0</b></span>
+          <span class="cnt cnt-pending" title="En cola">⏳ <b id="cnt-pending">0</b></span>
+          <span class="cnt cnt-done" title="Completados">✓ <b id="cnt-done">0</b></span>
+          <span class="cnt cnt-failed" title="Errores">✕ <b id="cnt-failed">0</b></span>
+        </div>
+        <button class="btn btn-ghost" id="btn-pause-resume" title="Pausar o reanudar cola">Pausar</button>
+        <button class="btn btn-ghost btn-danger-ghost" id="btn-cancel-all" title="Cancelar todos los trabajos en cola y detener el actual">⏹ Cancelar Cola</button>
+        <button class="btn btn-ghost" id="btn-open-outputs" title="Abrir carpeta de salidas en Explorer">📁 Salidas</button>
+        <button class="btn btn-ghost" id="btn-open-guide" title="Guía y manual de uso de la herramienta">📖 Guía de Uso</button>
+      </div>
+    </header>
+
+    <!-- MAIN 3-COLUMN WORKSPACE -->
+    <main class="workspace">
+      <!-- LEFT SIDEBAR: CARPETAS & GRUPOS -->
+      <aside class="panel panel-left">
+        <div class="panel-header">
+          <h2>Imágenes por Carpeta</h2>
+          <button class="btn-icon" id="btn-reload-images" title="Recargar carpetas">⟳</button>
+        </div>
+
+        <div class="folder-bar">
+          <div class="folder-input-row">
+            <input type="text" id="images-root-input" class="input mono" placeholder="Ruta de carpeta raíz con subcarpetas..." />
+            <button class="btn btn-ghost" id="btn-apply-folder">Aplicar</button>
+            <button class="btn btn-ghost" id="btn-browse-folder" title="Elegir carpeta con el explorador de Windows">📂</button>
+          </div>
+          <div class="preset-chips" id="folder-presets"></div>
+        </div>
+
+        <div class="filter-bar">
+          <input type="search" id="tree-search" class="input" placeholder="Filtrar categoría o imagen..." />
+          <div class="batch-helpers">
+            <button class="chip-btn" id="btn-select-pending" title="Seleccionar todas las imágenes que aún no tienen video generado">✓ Pendientes</button>
+            <button class="chip-btn" id="btn-select-all" title="Seleccionar todas las imágenes visibles">+ Todas</button>
+            <button class="chip-btn" id="btn-select-none" title="Limpiar selección">− Ninguna</button>
+          </div>
+        </div>
+
+        <div class="tree-scroll" id="category-tree">
+          <div class="empty-state">Cargando carpetas...</div>
+        </div>
+
+        <div class="batch-footer">
+          <div class="batch-info">
+            <span id="selection-summary">0 imágenes seleccionadas</span>
+          </div>
+          <button class="btn btn-primary btn-full" id="btn-queue-batch" disabled>
+            Encolar Batch (<span id="batch-count">0</span>)
+          </button>
+          <button class="btn btn-secondary btn-full" id="btn-queue-shots" style="margin-top:6px" title="Encolar cada toma completa con su par A➔B y prompt propio">
+            ⚡ Encolar Tomas A➔B (<span id="shots-count">0</span>)
+          </button>
+        </div>
+      </aside>
+
+      <!-- CENTER: COMPOSER I2V / T2V -->
+      <section class="panel panel-center">
+        <!-- SELECTOR DE MOTOR -->
+        <div class="engine-selector-bar">
+          <span class="engine-title">Motor:</span>
+          <div class="seg-group seg-engine" id="seg-model-engine">
+            <button class="seg-btn active" data-engine="ltx25" id="engine-btn-ltx">
+              🚀 LTX-2.5 22B <small>Distilled · 8+3 pasos</small>
+            </button>
+            <button class="seg-btn" data-engine="minimax_h3" id="engine-btn-minimax">
+              🎬 MiniMax H3 <small>FL2VA A➔B · Contexto largo</small>
+            </button>
+          </div>
+          <div class="tab-spacer"></div>
+          <span class="cat-badge" id="active-cat-badge">Sin categoría</span>
+        </div>
+
+        <div class="composer-tabs">
+          <button class="tab-btn active" data-task="i2v" id="tab-i2v">🖼 Imagen → Video (I2V / FL2VA)</button>
+          <button class="tab-btn" data-task="t2v" id="tab-t2v">✨ Texto → Video (T2V)</button>
+        </div>
+
+        <!-- PREVIEW STAGE -->
+        <div class="stage-card" id="stage-i2v-wrap">
+          <div class="stage-viewport" id="stage-viewport">
+            <div class="frames-comparison hidden" id="frames-comparison">
+              <div class="frame-col">
+                <span class="frame-tag frame-tag-a">Frame A (Inicio)</span>
+                <img id="preview-img-a" class="stage-img" alt="Frame A" />
+              </div>
+              <div class="frame-arrow">➔</div>
+              <div class="frame-col">
+                <span class="frame-tag frame-tag-b">Frame B (Fin)</span>
+                <img id="preview-img-b" class="stage-img" alt="Frame B" />
+              </div>
+            </div>
+            <img id="preview-img" class="hidden" alt="Preview primer frame" />
+            <div class="stage-empty" id="stage-empty">
+              <div>Seleccioná una imagen o toma de la izquierda</div>
+              <small>o marcá múltiples carpetas para generar un Batch completo</small>
+            </div>
+          </div>
+          <div class="stage-meta">
+            <div class="stage-nav">
+              <button class="btn-mini" id="btn-prev-img" title="Imagen anterior">← Ant</button>
+              <span class="mono truncate" id="preview-filename">—</span>
+              <button class="btn-mini" id="btn-next-img" title="Siguiente imagen">Sig →</button>
+            </div>
+            <div class="stage-dims mono" id="preview-target-dims">
+              Salida: 1280×704 · 121f (5.0s @ 24fps)
+            </div>
+          </div>
+        </div>
+
+        <!-- PROMPT EDITOR -->
+        <div class="prompt-section">
+          <div class="prompt-header">
+            <label for="prompt-input">Prompt Cinematográfico + Audio</label>
+            <div class="prompt-actions">
+              <button class="btn-mini" id="btn-save-cat-prompt" title="Guardar este prompt para toda la categoría activa">💾 Guardar en categoría</button>
+              <button class="btn-mini" id="btn-fill-missing-prompts" title="Aplicar este prompt a todas las categorías que todavía no tengan prompt">📋 Llenar vacías</button>
+            </div>
+          </div>
+
+          <div class="motion-presets" id="motion-presets">
+            <button class="preset-pill" data-insert="Slow camera dolly forward, smooth steady cinematic motion">Dolly adelante</button>
+            <button class="preset-pill" data-insert="Slow camera pan to the right, smooth steady motion">Pan derecha</button>
+            <button class="preset-pill" data-insert="Slow camera pan to the left, smooth steady motion">Pan izquierda</button>
+            <button class="preset-pill" data-insert="Slow camera orbit around the subject, smooth arcing motion">Órbita</button>
+            <button class="preset-pill" data-insert="Slow camera tilt upward, revealing the sky, smooth steady motion">Tilt arriba</button>
+            <button class="preset-pill" data-insert="Subtle drifting motion, gentle breeze moving foliage and clouds, almost static tripod shot">Sutil / Brisa</button>
+            <button class="preset-pill" data-insert="Crisp ambient wind, distant natural water sound, atmospheric depth">Audio ambiente</button>
+          </div>
+
+          <textarea id="prompt-input" class="textarea" rows="3" placeholder="Describí movimiento de cámara, acción y sonido ambiental... (Ctrl+Enter para generar)"></textarea>
+
+          <div class="prompt-footer">
+            <label class="checkbox-inline">
+              <input type="checkbox" id="chk-cat-prompts" checked />
+              <span>En Batch multi-categoría, usar el prompt guardado de cada carpeta (si falta, usar este)</span>
+            </label>
+            <span class="mono muted" id="prompt-char-count">0 chars</span>
+          </div>
+        </div>
+
+        <!-- CONTROLS GRID -->
+        <div class="controls-grid">
+          <div class="control-block" id="block-ltx-pipeline">
+            <div class="control-label">Pipeline LTX-2.5</div>
+            <div class="seg-group" id="seg-pipeline">
+              <button class="seg-btn active" data-two-stage="true">2-Stage HD <small>8+3 pasos · x2</small></button>
+              <button class="seg-btn" data-two-stage="false">1-Stage Rápido <small>8 pasos</small></button>
+            </div>
+          </div>
+
+          <div class="control-block hidden" id="block-minimax-mode">
+            <div class="control-label">Modo MiniMax H3</div>
+            <div class="seg-group" id="seg-minimax-mode">
+              <button class="seg-btn active" data-mm-mode="fl2va">FL2VA <small>Transición A➔B</small></button>
+              <button class="seg-btn" data-mm-mode="i2v">I2V <small>Frame A único</small></button>
+            </div>
+          </div>
+
+          <div class="control-block">
+            <div class="control-label">Resolución objetivo</div>
+            <div class="seg-group" id="seg-preset">
+              <button class="seg-btn" data-preset="512p">512p</button>
+              <button class="seg-btn" data-preset="576p">576p</button>
+              <button class="seg-btn active" data-preset="704p">704p</button>
+              <button class="seg-btn" data-preset="768p">768p</button>
+            </div>
+          </div>
+
+          <div class="control-block">
+            <div class="control-label">Proporción (Aspect)</div>
+            <div class="seg-group" id="seg-aspect">
+              <button class="seg-btn active" data-aspect="auto">Auto</button>
+              <button class="seg-btn" data-aspect="16:9">16:9</button>
+              <button class="seg-btn" data-aspect="9:16">9:16</button>
+              <button class="seg-btn" data-aspect="1:1">1:1</button>
+              <button class="seg-btn" data-aspect="4:3">4:3</button>
+            </div>
+          </div>
+
+          <div class="control-block">
+            <div class="control-label">Duración &amp; Audio</div>
+            <div class="duration-row">
+              <div class="seg-group" id="seg-duration">
+                <button class="seg-btn" data-duration="3">3s</button>
+                <button class="seg-btn active" data-duration="5">5s</button>
+                <button class="seg-btn" data-duration="7">7s</button>
+                <button class="seg-btn" data-duration="10">10s</button>
+              </div>
+              <input type="number" id="custom-duration" class="input input-num mono" min="1" max="15" step="0.5" value="5" title="Duración por chunk (seg)" />
+              <label class="toggle-pill" title="Incluir pista de audio generada">
+                <input type="checkbox" id="chk-audio" checked />
+                <span>🔊 Audio</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- ADVANCED DRAWER -->
+        <details class="advanced-box">
+          <summary>Ajustes avanzados (MiniMax Steps/CFG, VAE, DiT, Strength, Chunks, Seed, Negativo)</summary>
+          <div class="advanced-grid">
+            <div class="field" id="field-minimax-steps">
+              <label>MiniMax H3 (Pasos / CFG)</label>
+              <div class="dual-num">
+                <input type="number" id="inp-mm-steps" class="input mono" min="10" max="60" step="1" value="25" title="Pasos de sampling MiniMax (default 25)" />
+                <input type="number" id="inp-mm-cfg" class="input mono" min="1.0" max="10.0" step="0.5" value="3.5" title="CFG Scale MiniMax (default 3.5)" />
+              </div>
+            </div>
+            <div class="field">
+              <label>Modelo DiT</label>
+              <select id="sel-unet" class="input"></select>
+            </div>
+            <div class="field">
+              <label>Video VAE</label>
+              <select id="sel-vae" class="input">
+                <option value="diff">DiffVAE BF16 (Máximo detalle)</option>
+                <option value="conv">ConvVAE BF16 (Rápido / Menor VRAM)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Fuerza I2V (Etapa 1 / 2)</label>
+              <div class="dual-num">
+                <input type="number" id="inp-s1-str" class="input mono" min="0" max="1" step="0.05" value="0.7" title="Stage 1 strength" />
+                <input type="number" id="inp-s2-str" class="input mono" min="0" max="1" step="0.05" value="1.0" title="Stage 2 strength" />
+              </div>
+            </div>
+            <div class="field">
+              <label>Chunks encadenados / Crossfade</label>
+              <div class="dual-num">
+                <input type="number" id="inp-chunks" class="input mono" min="1" max="10" step="1" value="1" title="Cantidad de clips encadenados" />
+                <input type="number" id="inp-crossfade" class="input mono" min="0" max="1" step="0.05" value="0.25" title="Fundido entre chunks (seg)" />
+              </div>
+            </div>
+            <div class="field">
+              <label>Seed (0 = aleatoria) + FPS</label>
+              <div class="dual-num">
+                <input type="number" id="inp-seed" class="input mono" min="0" step="1" value="0" />
+                <button class="btn btn-ghost" id="btn-rand-seed" type="button" title="Seed aleatoria">🎲</button>
+                <input type="number" id="inp-fps" class="input mono" min="12" max="50" step="1" value="24" title="FPS" />
+              </div>
+            </div>
+            <div class="field">
+              <label>Calidad MP4 (CRF)</label>
+              <input type="number" id="inp-crf" class="input mono" min="10" max="30" step="1" value="17" />
+            </div>
+            <div class="field field-wide">
+              <label>Prompt Negativo</label>
+              <input type="text" id="inp-negative" class="input" placeholder="pc game, console game, cartoon, blurry, watermark..." />
+            </div>
+          </div>
+        </details>
+
+        <!-- PRIMARY CTA -->
+        <div class="composer-cta">
+          <button class="btn btn-primary btn-lg" id="btn-generate-single">
+            ▶ Generar Clip Activo
+          </button>
+          <button class="btn btn-accent btn-lg" id="btn-queue-category" title="Encolar todas las imágenes pendientes de la categoría actual">
+            ⚡ Encolar Categoría (<span id="cat-pending-count">0</span>)
+          </button>
+        </div>
+      </section>
+
+      <!-- RIGHT PANEL: QUEUE & GALLERY -->
+      <aside class="panel panel-right">
+        <div class="panel-header">
+          <h2>Cola &amp; Resultados</h2>
+          <div style="display:flex;gap:4px">
+            <button class="btn-mini btn-danger" id="btn-cancel-all-right" title="Cancelar todos los trabajos pendientes de la cola">✕ Cancelar Todo</button>
+            <button class="btn-mini" id="btn-concat-scene" title="Concatenar clips listos de la escena/categoría activa en un video continuo">🎬 Unir Escena</button>
+            <button class="btn-mini" id="btn-clear-done" title="Limpiar trabajos completados, fallidos y cancelados">Limpiar</button>
+          </div>
+        </div>
+
+        <div class="jobs-tabs">
+          <button class="jtab active" data-filter="all">Todos</button>
+          <button class="jtab" data-filter="running">En curso</button>
+          <button class="jtab" data-filter="success">Listos</button>
+          <button class="jtab" data-filter="failed">Errores</button>
+        </div>
+
+        <div class="jobs-scroll" id="jobs-list">
+          <div class="empty-state">Todavía no hay videos generados.</div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <!-- LIGHTBOX MODAL -->
+  <div class="modal hidden" id="video-modal">
+    <div class="modal-backdrop" id="modal-backdrop"></div>
+    <div class="modal-card">
+      <div class="modal-top">
+        <div class="modal-title" id="modal-title">Video LTX-2.5</div>
+        <div class="modal-actions">
+          <button class="btn-mini" id="modal-prev">←</button>
+          <button class="btn-mini" id="modal-next">→</button>
+          <button class="btn-mini" id="modal-reseed">🎲 Nueva Seed</button>
+          <button class="btn-mini" id="modal-folder">📂 Explorer</button>
+          <a class="btn-mini" id="modal-download" download>⬇ Descargar</a>
+          <button class="btn-mini btn-danger" id="modal-close">✕</button>
+        </div>
+      </div>
+      <div class="modal-video-wrap">
+        <video id="modal-video" controls autoplay loop playsinline></video>
+      </div>
+      <div class="modal-meta" id="modal-meta"></div>
+    </div>
+  </div>
+
+  <!-- GUIDE & MANUAL MODAL -->
+  <div class="modal hidden" id="guide-modal">
+    <div class="modal-backdrop" id="guide-backdrop"></div>
+    <div class="modal-card modal-guide-card">
+      <div class="modal-top">
+        <div class="modal-title">📖 Manual &amp; Guía de Uso · Dual Engine Video Studio</div>
+        <button class="btn-mini btn-danger" id="guide-close">✕</button>
+      </div>
+
+      <div class="modal-guide-body">
+        <!-- 4 PILARES TECNICOS -->
+        <div class="guide-section">
+          <div class="guide-section-title">
+            <span>📌 Los 4 Pilares de Continuidad en Video Largo</span>
+            <span class="badge badge-accent">Esenciales</span>
+          </div>
+          <p style="color:var(--muted);font-size:12px;margin:0">
+            Técnicas avanzadas aplicadas en la integración de MiniMax H3 y LTX-2.5 para mantener coherencia temporal y eliminar degradaciones en proyectos de gran escala:
+          </p>
+
+          <div class="guide-grid-2">
+            <div class="guide-card-box">
+              <h4>🎯 1. Interpolación Anclada FL2VA (First &amp; Last Frame)</h4>
+              <p>
+                En los modelos tradicionales I2V (imagen a video), la animación parte de un único cuadro inicial y, al cabo de pocos segundos, la trayectoria se desvía drásticamente del contexto esperado (pérdida de identidad, mutaciones o fondos distorsionados).
+              </p>
+              <div class="guide-callout purple" style="margin-top:8px">
+                <b>Solución FL2VA:</b> El nodo <code>MiniMaxH3ImageToVideo</code> recibe el <b>Frame A</b> (inicio) y el <b>Frame B</b> (cierre). La difusión queda matemáticamente anclada en ambos extremos, resolviendo la transición de manera limpia y cinematográfica.
+              </div>
+            </div>
+
+            <div class="guide-card-box">
+              <h4>💎 2. Eliminación de la Degradación por Re-encodeo VAE</h4>
+              <p>
+                Al encadenar tomas extrayendo el último fotograma como PNG para alimentar el siguiente clip, el proceso repetido de decodificación y re-codificación con el VAE acumula ruido gaussiano y causa <i>color drift</i> (lavado de contraste y tonos).
+              </p>
+              <div class="guide-callout green" style="margin-top:8px">
+                <b>Solución de pureza:</b> Al estructurar tomas continuas en pares de fotogramas originales A/B con la misma semilla o estilo base, las latentes se mantienen intactas en su espacio matemático original sin acumulación de pérdidas generacionales.
+              </div>
+            </div>
+
+            <div class="guide-card-box">
+              <h4>🔊 3. Audio Sincronizado Nativo en la Difusión</h4>
+              <p>
+                A diferencia de los métodos externos de post-producción sonora, tanto MiniMax H3 como LTX-2.5 integran generación conjunta de latentes audiovisuales directamente en el muestreo de difusión.
+              </p>
+              <div class="guide-callout" style="margin-top:8px">
+                <b>Efecto:</b> El decodificador <code>VAEDecodeAudio</code> sintetiza pistas ambientales (oleaje, viento entre bambú, resonancias templarias) alineadas temporalmente con el ritmo y la escala del movimiento en cámara.
+              </div>
+            </div>
+
+            <div class="guide-card-box">
+              <h4>🎬 4. Ensamblador de Escenas Continuas (Unir Escena)</h4>
+              <p>
+                Una vez completadas las tomas de una escena, el dashboard incluye un motor de concatenación automatizado por FFmpeg mediante el botón <b><code>🎬 Unir Escena</code></b>.
+              </p>
+              <div class="guide-callout amber" style="margin-top:8px">
+                <b>Fundido inteligente:</b> Aplica un crossfade suave (0.2s) tanto de video como de pista de audio estéreo AAC, produciendo la secuencia continua completa sin necesidad de abrir un editor externo.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CUANDO USAR CADA MOTOR -->
+        <div class="guide-section">
+          <div class="guide-section-title">
+            <span>⚖️ Comparativa de Motores: ¿Cuándo usar cada uno?</span>
+          </div>
+
+          <div class="guide-grid-2">
+            <div class="guide-card-box" style="border-left:3px solid #22d3ee">
+              <h4 style="color:#22d3ee">⚡ LTX-2.5 (22B Distilled)</h4>
+              <ul style="padding-left:18px;margin:6px 0;display:flex;flex-direction:column;gap:5px">
+                <li><b>Velocidad extrema:</b> ~1 a 1.5 minutos por clip en RTX 4090 (solo 8+3 pasos en 2-Stage HD).</li>
+                <li><b>Ideal para:</b> Exploración rápida de ángulos, borradores preliminares, tomas dinámicas cortas (3 a 5s) a partir de una sola imagen inicial (I2V clásico).</li>
+                <li><b>Upscale inteligente:</b> El flujo 2-Stage renderiza primero a resolución base y luego refina a alta resolución mediante el modelo de upscale latente.</li>
+              </ul>
+            </div>
+
+            <div class="guide-card-box" style="border-left:3px solid #c084fc">
+              <h4 style="color:#c084fc">👑 MiniMax H3 (DiT int8 + Qwen3-VL 32B)</h4>
+              <ul style="padding-left:18px;margin:6px 0;display:flex;flex-direction:column;gap:5px">
+                <li><b>Fidelidad cinematográfica máxima:</b> ~8 a 12 minutos por clip (25 pasos de difusión).</li>
+                <li><b>Comprensión visual profunda:</b> Utiliza el modelo Vision-Language Qwen3-VL de 32B para entender con precisión los matices del prompt y de la imagen.</li>
+                <li><b>Ideal para:</b> Tomas maestras definitivas, transiciones perfectas A➔B con FL2VA y duraciones extendidas de 5 a 10 segundos sin deformación.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- ESTRUCTURA DEL CATALOGO Y AUTOMATIZACION -->
+        <div class="guide-section">
+          <div class="guide-section-title">
+            <span>🗂️ Flujo de Trabajo en Batch con Catálogo Flow-Nanobanana</span>
+          </div>
+
+          <div class="guide-step">
+            <div class="guide-step-num">1</div>
+            <div>
+              <b>Estructura de Tomas:</b> El catálogo está organizado en 10 escenas y 60 tomas. Cada toma contiene su subcarpeta <code>A/</code> (fotogramas iniciales), <code>B/</code> (fotogramas finales) y archivos <code>prompt_A.txt</code> / <code>prompt_B.txt</code>.
+            </div>
+          </div>
+
+          <div class="guide-step">
+            <div class="guide-step-num">2</div>
+            <div>
+              <b>Previsualización Dual:</b> Al pulsar en cualquier toma del panel izquierdo, el visor central despliega automáticamente la comparación <b>Frame A ➔ Frame B</b> con el prompt propio cargado en el editor.
+            </div>
+          </div>
+
+          <div class="guide-step">
+            <div class="guide-step-num">3</div>
+            <div>
+              <b>Encolado Masivo en 1 Clic:</b> Pulsa el botón <b><code>⚡ Encolar Tomas A➔B (60)</code></b> para enviar todo el proyecto a la cola. El sistema procesará cada toma de forma secuencial, liberando memoria de manera eficiente.
+            </div>
+          </div>
+
+          <div class="guide-step">
+            <div class="guide-step-num">4</div>
+            <div>
+              <b>Tolerancia a Fallos y Reintentos:</b> Si un trabajo reporta un error o deseas explorar otra variación, utiliza <b><code>↻ Reintentar</code></b> (auto-sanea los modelos asignados) o <b><code>🎲 Nueva Seed</code></b> para re-generar con una semilla fresca.
+            </div>
+          </div>
+        </div>
+
+        <!-- REGLAS TECNICAS Y RECOMENDACIONES -->
+        <div class="guide-section">
+          <div class="guide-section-title">
+            <span>⚙️ Reglas Técnicas &amp; Buenas Prácticas</span>
+          </div>
+
+          <div class="guide-grid-2">
+            <div>
+              <h4 style="margin-bottom:6px">📐 Grilla de Fotogramas MiniMax (17k + 5)</h4>
+              <p style="font-size:12px;color:var(--muted)">
+                MiniMax H3 opera en múltiplos estrictos de 17 más 5 cuadros. El dashboard auto-ajusta la duración elegida a los valores válidos más cercanos:
+              </p>
+              <div style="font-family:var(--font-mono);font-size:11px;background:#060a10;padding:8px 10px;border-radius:6px;margin-top:6px;border:1px solid var(--border)">
+                • 5.16s @ 24fps = 124 frames (17 × 7 + 5)<br>
+                • 10.12s @ 24fps = 243 frames (17 × 14 + 5)<br>
+                • Resoluciones: Múltiplos de 32 (1344×768, 1280×704).
+              </div>
+            </div>
+
+            <div>
+              <h4 style="margin-bottom:6px">💡 Consejos de Prompting Cinematográfico</h4>
+              <p style="font-size:12px;color:var(--muted)">
+                Describe dinámicas de cámara y atmósfera en lugar de objetos estáticos:
+              </p>
+              <div style="font-size:12px;background:#060a10;padding:8px 10px;border-radius:6px;margin-top:6px;border:1px solid var(--border)">
+                • <b>Recomendado:</b> <i>"Slow steady push-in dolly, mist rising from still black water, golden light rays shimmering across temple bamboo"</i>.<br>
+                • <b>Prompt Negativo:</b> Deja el valor por defecto para filtrar looks de videojuego, distorsiones, marcas de agua o bordes temblorosos.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div class="toast-stack" id="toast-stack"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+# Python virtual environment
+.venv/
+venv/
+ENV/
+env/
+
+# Large model weights and video outputs (Windows Junctions / Folders)
+models/
+outputs/
+*.safetensors
+*.gguf
+*.pt
+*.bin
+*.onnx
+*.mp4
+*.webm
+*.avi
+*.mkv
+*.wav
+*.mp3
+
+# Partial downloads and temp chunks
+*.part
+*.download
+.chunks/
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Logs
+*.log
+logs/
+
+# IDE & OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
