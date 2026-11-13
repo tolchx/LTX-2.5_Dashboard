@@ -7,6 +7,8 @@ env/
 # Large model weights and video outputs (Windows Junctions / Folders)
 models/
 outputs/
+batch/endframes/
+batch/selva_amk/
 *.safetensors
 *.gguf
 *.pt

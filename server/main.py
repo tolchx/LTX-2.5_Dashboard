@@ -217,6 +217,8 @@ class GenerateReq(BaseModel):
     unet_name: str = ""
     steps: int | None = None
     cfg: float | None = None
+    video_cfg: float = 1.0           # solo ltx25: 1.0 = sin guia negativa (destilado)
+    guide_strength: float | None = None  # fuerza de la guia de ultimo frame
     crf: int = 17
 
 
@@ -251,6 +253,7 @@ class BatchReq(BaseModel):
     unet_name: str = ""
     steps: int | None = None
     cfg: float | None = None
+    guide_strength: float | None = None
     crf: int = 17
 
 
@@ -733,6 +736,9 @@ def _make_job(
         "two_stage": bool(req.two_stage),
         "vae_mode": req.vae_mode if req.vae_mode in ("diff", "conv") else cfg.get("default_vae_mode", "diff"),
         "i2v_strength": max(0.0, min(1.0, float(req.i2v_strength))),
+        "guide_strength": max(0.0, min(1.0, float(
+            req.guide_strength if req.guide_strength is not None
+            else cfg.get("guide_strength", 0.7)))),
         "stage2_strength": max(0.0, min(1.0, float(req.stage2_strength))),
         "include_audio": bool(req.include_audio),
         "img_compression": int(cfg.get("default_img_compression", 18)),
@@ -742,6 +748,7 @@ def _make_job(
         "seed": seed_val,
         "steps": steps_val,
         "cfg": cfg_val,
+        "video_cfg": float(req.video_cfg or 1.0),
         "unet_name": resolved_unet,
         "clip_name": resolved_clip,
         "output": out_abs,
@@ -852,6 +859,62 @@ def concat_scene(req: ConcatReq) -> Any:
 
 
 # ------------------------------------------------------------------- queue & jobs
+_LOTE_CACHE: dict[str, Any] = {"ts": 0.0, "data": None}
+
+
+@app.get("/api/lote")
+def lote_status() -> dict[str, Any]:
+    """Progreso del LOTE real (batch/state_ltx_cam.json).
+
+    El dashboard solo conoce los jobs que pasan por su cola; cuando el lote lo maneja
+    un driver externo (batch_grupo.py, batch.py tick) sus contadores quedan clavados.
+    Esto lee el state del lote y devuelve los numeros de verdad, con cache corta para
+    no parsear 700 KB en cada poll.
+    """
+    import time as _t
+
+    if _LOTE_CACHE["data"] is not None and _t.time() - _LOTE_CACHE["ts"] < 4:
+        return _LOTE_CACHE["data"]
+
+    base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ruta = os.environ.get("LTXB_STATE") or os.path.join(base, "batch", "state_ltx_cam.json")
+    data: dict[str, Any] = {"ok": False, "archivo": ruta}
+    try:
+        with open(ruta, encoding="utf-8") as f:
+            st = json.load(f)
+        items = st.get("items") or []
+        cnt: dict[str, int] = {}
+        for it in items:
+            cnt[it.get("status") or "?"] = cnt.get(it.get("status") or "?", 0) + 1
+        hechos = [i for i in items if i.get("status") == "hecho"]
+        segs = [float(i.get("dur_s")) for i in hechos if i.get("dur_s") and float(i.get("dur_s")) < 1200]
+        ritmo = round(sum(segs) / len(segs), 1) if segs else None
+        faltan = cnt.get("pendiente", 0) + cnt.get("corriendo", 0)
+        hecho_ahora = [i for i in items if i.get("status") == "corriendo"]
+        fin = [i.get("finished") for i in hechos if i.get("finished")]
+        data = {
+            "ok": True,
+            "archivo": ruta,
+            "total": len(items),
+            "hecho": len(hechos),
+            "pendiente": cnt.get("pendiente", 0),
+            "corriendo": cnt.get("corriendo", 0),
+            "error": cnt.get("error", 0),
+            "pct": round(100.0 * len(hechos) / max(len(items), 1), 1),
+            "ritmo_s": ritmo,
+            "eta_h": round(ritmo * faltan / 3600.0, 1) if ritmo else None,
+            "ultimo": max(fin) if fin else None,
+            "en_curso": [
+                {"shot": i.get("shot"), "camara": i.get("camara"), "rol": i.get("role")}
+                for i in hecho_ahora[:8]
+            ],
+        }
+    except Exception as e:  # noqa: BLE001
+        data["error"] = str(e)[:200]
+    _LOTE_CACHE.update({"ts": _t.time(), "data": data})
+    return data
+
+
 @app.get("/api/queue")
 def queue_status() -> dict[str, Any]:
     return queue.counts()
@@ -954,11 +1017,22 @@ def clear_finished() -> dict[str, Any]:
 # ------------------------------------------------------------------- dynamic media & images (always current!)
 @app.get("/images/{rel_path:path}")
 def serve_image(rel_path: str) -> Any:
-    img_dir = get_config().get("images_dir", "")
-    full = _safe_join(img_dir, rel_path)
-    if not full or not os.path.isfile(full):
-        return JSONResponse(status_code=404, content={"error": "image not found"})
-    return FileResponse(full)
+    cfg = get_config()
+    candidate_roots = [
+        cfg.get("images_dir", ""),
+        r"C:\Users\Tolch\Documents\AI_Code\Nomade_Visuals\Flow-Nanobanana",
+        r"D:\Proyectos_Activos\2026-12-08 Gio Visuals\Catalogo_web\assets\imagenes",
+    ]
+    from urllib.parse import unquote
+    unq = unquote(rel_path)
+    for root in candidate_roots:
+        if not root:
+            continue
+        for target in (unq, rel_path):
+            full = _safe_join(root, target)
+            if full and os.path.isfile(full):
+                return FileResponse(full)
+    return JSONResponse(status_code=404, content={"error": "image not found"})
 
 
 @app.get("/media/{rel_path:path}")
@@ -966,9 +1040,25 @@ def serve_media(rel_path: str) -> Any:
     out_dir = get_config()["output_dir"]
     full = _safe_join(out_dir, rel_path)
     if not full or not os.path.isfile(full):
+        from urllib.parse import unquote
+        full_unquoted = _safe_join(out_dir, unquote(rel_path))
+        if full_unquoted and os.path.isfile(full_unquoted):
+            return FileResponse(full_unquoted, media_type="video/mp4")
         return JSONResponse(status_code=404, content={"error": "media not found"})
     return FileResponse(full, media_type="video/mp4")
 
 
 # Frontend estático (siempre último)
 app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="web")
+
+
+@app.middleware("http")
+async def _sin_cache_estaticos(request, call_next):
+    """La UI se quedaba vieja en el navegador: app.js cacheado y el header con numeros
+    del lote que nunca aparecian. Los estaticos de la app van sin cache."""
+    resp = await call_next(request)
+    ruta = request.url.path
+    if ruta.endswith((".js", ".css", ".html")) or ruta == "/":
+        resp.headers["Cache-Control"] = "no-store, must-revalidate"
+        resp.headers["Pragma"] = "no-cache"
+    return resp

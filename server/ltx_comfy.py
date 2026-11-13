@@ -214,7 +214,10 @@ def build_workflow(
     include_audio: bool = True,
     img_compression: int = 18,
     crf: int = 17,
+    video_cfg: float = 1.0,
     prefix: str = "ltx25/clip",
+    last_image_name: str | None = None,
+    guide_strength: float = 0.7,
 ) -> dict[str, Any]:
     """Construye el grafo API oficial de LTX-2.5 para ComfyUI 0.39.0."""
     if not seed or int(seed) <= 0:
@@ -325,6 +328,54 @@ def build_workflow(
     else:
         s1_video_latent = ["11", 0]
 
+    # --- guia de ULTIMO frame (LTXVAddGuide, frame_idx=-1) --------------------
+    # El modelo tiene un sesgo fortisimo a hacer push-in pase lo que diga el prompt
+    # (medido: +2 % a +8 % de escala por clip, y al final el encuadre termina metido
+    # en el bokeh). Con un frame final sintetico —otro crop del mismo still— el clip
+    # esta obligado a llegar a ese encuadre, y ese salto es el paneo/tilt que pide el
+    # prompt. Solo una pasada: en dos etapas el latent cambia de forma.
+    guide_node = None
+    cond_pos, cond_neg = ["7", 0], ["7", 1]
+    if is_i2v and last_image_name and not two_stage:
+        wf["40"] = {
+            "class_type": "LoadImage",
+            "inputs": {"image": last_image_name},
+            "_meta": {"title": "Ultimo frame (guia)"},
+        }
+        wf["41"] = {
+            "class_type": "ResizeImageMaskNode",
+            "inputs": {
+                "input": ["40", 0],
+                "resize_type": "scale dimensions",
+                "resize_type.width": s1_w,
+                "resize_type.height": s1_h,
+                "resize_type.crop": "center",
+                "scale_method": "lanczos",
+            },
+            "_meta": {"title": "Ultimo frame · resize"},
+        }
+        wf["42"] = {
+            "class_type": "LTXVPreprocess",
+            "inputs": {"image": ["41", 0], "img_compression": int(img_compression)},
+            "_meta": {"title": "Ultimo frame · preprocess"},
+        }
+        wf["43"] = {
+            "class_type": "LTXVAddGuide",
+            "inputs": {
+                "positive": ["7", 0],
+                "negative": ["7", 1],
+                "vae": ["3", 0],
+                "latent": s1_video_latent,
+                "image": ["42", 0],
+                "frame_idx": -1,
+                "strength": float(guide_strength),
+            },
+            "_meta": {"title": "Guia ultimo frame"},
+        }
+        s1_video_latent = ["43", 2]
+        cond_pos, cond_neg = ["43", 0], ["43", 1]
+        guide_node = "43"
+
     wf["13"] = {
         "class_type": "LTXVEmptyLatentAudio",
         "inputs": {
@@ -356,9 +407,9 @@ def build_workflow(
         "class_type": "LTXVDualCFGGuider",
         "inputs": {
             "model": ["1", 0],
-            "positive": ["7", 0],
-            "negative": ["7", 1],
-            "video_cfg": 1.0,
+            "positive": cond_pos,
+            "negative": cond_neg,
+            "video_cfg": float(video_cfg),
             "audio_cfg": 1.0,
         },
     }
@@ -453,10 +504,25 @@ def build_workflow(
     else:
         final_sep_node = "20"
 
+    # Las guias agregan frames al latent: hay que sacarlas antes de decodificar.
+    if guide_node:
+        wf["44"] = {
+            "class_type": "LTXVCropGuides",
+            "inputs": {
+                "positive": [guide_node, 0],
+                "negative": [guide_node, 1],
+                "latent": [final_sep_node, 0],
+            },
+            "_meta": {"title": "Crop de guias"},
+        }
+        decode_samples = ["44", 2]
+    else:
+        decode_samples = [final_sep_node, 0]
+
     wf["31"] = {
         "class_type": "VAEDecodeTiled",
         "inputs": {
-            "samples": [final_sep_node, 0],
+            "samples": decode_samples,
             "vae": ["3", 0],
             "tile_size": 512,
             "overlap": 64,
@@ -802,6 +868,31 @@ def extract_video(outputs: dict[str, Any] | None) -> tuple[str | None, str | Non
 
 def resolve_comfy_output(comfy_output_dir: str, subfolder: str, filename: str) -> str:
     return os.path.join(comfy_output_dir, subfolder, filename) if subfolder else os.path.join(comfy_output_dir, filename)
+
+
+def buscar_por_prefijo(comfy_output_dir: str, base: str, subfolder: str = "ltx25") -> str | None:
+    """Ultimo MP4 cuyo nombre empiece con `base`.
+
+    Red de seguridad para el job que queda en 99 %: cuando ComfyUI se reinicia (los
+    reinicios por RAM del lote) el prompt_id desaparece del /history y el dashboard
+    no tiene como cerrar el trabajo, aunque el clip ya este escrito en disco. El
+    prefijo del archivo es f"{job_id[:10]}_c{chunk}", asi que se puede recuperar.
+    """
+    import glob
+
+    patrones = [
+        os.path.join(comfy_output_dir, subfolder, f"{base}*.mp4"),
+        os.path.join(comfy_output_dir, "**", f"{base}*.mp4"),
+    ]
+    vistos: list[str] = []
+    for pat in patrones:
+        vistos.extend(glob.glob(pat, recursive=True))
+    if not vistos:
+        return None
+    vistos = [p for p in set(vistos) if os.path.getsize(p) > 100_000]
+    if not vistos:
+        return None
+    return max(vistos, key=os.path.getmtime)
 
 
 def extract_last_frame(video_abs: str, out_abs: str) -> None:

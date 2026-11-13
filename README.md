@@ -51,11 +51,17 @@ Diseñado específicamente para flujos de trabajo profesionales de animación fo
 - **Generación Extendida Multi-Chunk:**
   - Para duraciones superiores a 5 segundos, el motor divide la generación en segmentos temporales encadenados con mezcla suave de fotogramas (crossfade) sin saltos.
 
-- **Telemetría y Control en Tiempo Real:**
-  - Conexión WebSocket bidireccional continua con ComfyUI (`127.0.0.1:8188`).
-  - Barra de progreso porcentual y seguimiento nodo por nodo (Text Encoding ➔ DiT Sampling ➔ Latent Upscale ➔ Audio Decode ➔ Video Mux).
-  - Medidor de consumo de VRAM en vivo y botón para forzar recolección de memoria (`Liberar VRAM`).
-  - Pausa, reanudación y reintentos automáticos.
+- **Doble Motor de Generación (LTX-2.5 + MiniMax H3):**
+  - **LTX-2.5 (22B Distilled):** Pipeline rápido en 1 o 2 etapas con audio nativo sincronizado.
+  - **MiniMax H3 (DiT INT8 + Qwen3-VL 32B):** Motor alternativo seleccionable desde la UI o scripts de lote para tomas de alta coherencia.
+
+- **Guía de Último Frame (`LTXVAddGuide` + `LTXVCropGuides`):**
+  - Soporte para `last_image_name`, `guide_strength` y `video_cfg` en generación 1-Stage para anclar el encuadre final mediante endframes sintéticos y controlar paneos/travellings sin sesgo de push-in.
+
+- **Telemetría, Lote Externo y Control en Tiempo Real:**
+  - Seguimiento de progreso nodo por nodo y medidor de consumo de VRAM/RAM en vivo con botón para liberar memoria (`POST /api/comfy/free`).
+  - Indicador de **Lote Externo** (`/api/lote`) en la barra superior que lee `batch/state_ltx_cam.json` (o `LTXB_STATE`) para reflejar el avance real, ritmo y ETA cuando los drivers de `batch/` corren fuera de la cola de la UI.
+  - Recuperación automática de salidas huérfanas por prefijo de job, pausa, reanudación y reintentos.
 
 - **Presets de Movimiento de Cámara:**
   - Inyección instantánea de directivas cinematográficas: *Dolly In*, *Dolly Out*, *Panorámica Horizontal*, *Órbita 360°*, *Tilt Vertical*, *Brisa Sutil* y *Audio Foley Atmosférico*.
@@ -227,18 +233,27 @@ LTX-2.5_Dashboard/
 ├── download_models.bat     # Wrapper de descarga y validación
 ├── requirements.txt        # Dependencias de Python (FastAPI, uvicorn, pillow, etc.)
 ├── README.md               # Documentación general del proyecto
+├── SELVA_AMK.md            # Documentación del flujo de murales y pixelmap multi-pantalla
 │
 ├── server/                 # Backend en Python / FastAPI
-│   ├── main.py             # Rutas API, estáticos y WebSocket
-│   ├── ltx_comfy.py        # Generador de flujos JSON para ComfyUI
-│   ├── queue.py            # Orquestador asíncrono de tareas y telemetría
+│   ├── main.py             # Rutas API, estáticos (no-store) y estado de lote (/api/lote)
+│   ├── ltx_comfy.py        # Generador de flujos JSON para ComfyUI (LTX-2.5, MiniMax H3, LTXVAddGuide)
+│   ├── queue.py            # Orquestador asíncrono de tareas, telemetría y recuperación de huérfanos
 │   ├── store.py            # Gestión de imágenes, metadatos y categorías
 │   └── config.json         # Configuración de rutas y presets por defecto
 │
 ├── web/                    # Frontend nativo (Vanilla ES6 + CSS moderno)
-│   ├── index.html          # Estructura del Dashboard y modales
+│   ├── index.html          # Estructura del Dashboard, indicador de lote y modales
 │   ├── styles.css          # Estilos tema oscuro con diseño fluido
-│   └── app.js              # Lógica de interacción, Websockets y Lightbox
+│   └── app.js              # Lógica de interacción, polling de cola/lote y Lightbox
+│
+├── batch/                  # Scripts de automatización y pipelines por lotes
+│   ├── batch.py            # Runner principal reanudable (LTX-2.5 / MiniMax H3)
+│   ├── batch_grupo.py      # Orquestador por grupos con control de pausa/reanudación
+│   ├── endframes.py        # Generación de endframes sintéticos para guía de cámara
+│   ├── camara.py           # Planificación y presets de movimiento de cámara
+│   ├── cortar_mural.py     # Recorte de murales a resoluciones exactas por pantalla LED
+│   └── ...                 # Utilidades de auditoría, watchdog, post-procesado y estado
 │
 ├── scripts/                # Herramientas de soporte
 │   └── download_models.py  # Script de descarga y verificación SHA/tamaño
@@ -258,15 +273,25 @@ LTX-2.5_Dashboard/
 
 | Método | Endpoint | Descripción |
 | :--- | :--- | :--- |
-| `GET` | `/api/status` | Estado de salud del servidor y conexión con ComfyUI. |
-| `GET` | `/api/images/categories` | Lista de categorías, fotos disponibles y videos renderizados. |
-| `GET` | `/api/prompts` | Lectura de los prompts guardados por categoría. |
-| `POST` | `/api/prompts` | Actualización o guardado masivo de prompts. |
-| `POST` | `/api/generate` | Encolar una tarea individual o batch de video. |
-| `GET` | `/api/queue` | Inspección de la cola de procesamiento activa. |
-| `POST` | `/api/queue/{id}/cancel` | Cancelación de un trabajo encolado. |
-| `POST` | `/api/vram/clear` | Liberación forzada de memoria VRAM en PyTorch/ComfyUI. |
-| `WS` | `/ws/progress` | Transmisión en tiempo real de logs y telemetría de muestreo. |
+| `GET` | `/api/health` | Estado de salud del servidor, VRAM/RAM libre y conexión con ComfyUI. |
+| `GET` | `/api/gpu` | Telemetría en vivo de la GPU. |
+| `GET` | `/api/models` | Listado de modelos disponibles para LTX-2.5 y MiniMax H3. |
+| `POST` | `/api/comfy/free` | Liberación forzada de memoria VRAM en PyTorch/ComfyUI. |
+| `GET` | `/api/images` | Lista de categorías, fotos disponibles y videos renderizados. |
+| `GET` / `POST` | `/api/prompts` | Lectura y actualización de los prompts guardados por categoría. |
+| `GET` / `POST` | `/api/config` | Lectura y actualización de la configuración global del servidor. |
+| `POST` | `/api/generate` | Encolar una tarea individual (incluye `video_cfg`, `guide_strength`, `last_image_name`). |
+| `POST` | `/api/generate-batch` | Encolar un lote de imágenes o categoría completa. |
+| `POST` | `/api/scenes/concat` | Concatenación de clips de escena vía FFmpeg. |
+| `GET` | `/api/lote` | Progreso real del lote externo (`batch/state_ltx_cam.json` o `LTXB_STATE`). |
+| `GET` | `/api/queue` | Contadores y estado de la cola de procesamiento. |
+| `POST` | `/api/queue/pause` | Pausar el procesamiento de la cola. |
+| `POST` | `/api/queue/resume` | Reanudar el procesamiento de la cola. |
+| `POST` | `/api/queue/cancel-all` | Cancelar todos los trabajos pendientes/activos. |
+| `GET` | `/api/jobs` | Listado de trabajos en cola e historial. |
+| `POST` | `/api/jobs/{job_id}/cancel` | Cancelación de un trabajo específico. |
+| `POST` | `/api/jobs/{job_id}/retry` | Reintentar un trabajo fallido o cancelado. |
+| `DELETE` | `/api/jobs/{job_id}` | Eliminar un trabajo del historial. |
 
 ---
 

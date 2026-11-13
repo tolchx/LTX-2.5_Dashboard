@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LTX-2.5 Studio · Batch Video &amp; Audio</title>
-  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/styles.css?v=20261113c" />
 </head>
 <body>
   <div class="app-shell">
@@ -41,6 +41,10 @@
 
         <div class="pill-group mono" id="disk-pill" title="Espacio libre en disco de salidas">
           <span id="disk-free">-- GB</span>
+        </div>
+
+        <div class="pill-group mono" id="lote-pill" title="Lote NOMADE: lee batch/state_ltx_cam.json (progreso real, aunque el driver corra por fuera de esta cola)">
+          <span id="lote-text">lote --</span>
         </div>
       </div>
 
@@ -520,6 +524,6 @@
   <!-- TOAST CONTAINER -->
   <div class="toast-stack" id="toast-stack"></div>
 
-  <script src="/app.js"></script>
+  <script src="/app.js?v=20261113c"></script>
 </body>
 </html>

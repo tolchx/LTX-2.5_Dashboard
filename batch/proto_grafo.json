@@ -1,0 +1,780 @@
+{
+ "1": {
+  "class_type": "UnetLoaderGGUF",
+  "inputs": {
+   "unet_name": "ltx-2.5-22b-distilled-UD-Q4_K_XL.gguf"
+  },
+  "_meta": {
+   "title": "Cargando DiT LTX-2.5"
+  }
+ },
+ "2": {
+  "class_type": "CLIPLoader",
+  "inputs": {
+   "clip_name": "gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors",
+   "type": "ltxv",
+   "device": "default"
+  },
+  "_meta": {
+   "title": "Cargando Gemma 4 Text Encoder"
+  }
+ },
+ "3": {
+  "class_type": "VAELoader",
+  "inputs": {
+   "vae_name": "ltx-2.5-video-vae-bf16.safetensors"
+  },
+  "_meta": {
+   "title": "Cargando Video VAE"
+  }
+ },
+ "4": {
+  "class_type": "VAELoader",
+  "inputs": {
+   "vae_name": "ltx-2.5-audio-vae-bf16.safetensors"
+  },
+  "_meta": {
+   "title": "Cargando Audio VAE"
+  }
+ },
+ "c1_5": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "clip": [
+    "2",
+    0
+   ],
+   "text": "Very slow lateral tracking move to the LEFT: the camera body slides sideways, parallel to the scene, constant distance, constant focal length, no zoom. Cluster of brass filigree lanterns at different depths, warm bulbs inside, a chain of bokeh falling into darkness, one lantern swinging. A handcrafted altar of raw bamboo, clay pots, brass bowls, cut fruit, dried flowers and heavy hand-dyed ochre linen, lit only by candles and hanging brass lanterns, set into dense tropical foliage at the edge of a dark jungle clearing; craft over spectacle, honest artisanal textures, warm flickering light, slight smoke. Photoreal cinematic still, medium-format quality, 35mm lens, f/2.8, shallow depth of field, soft anamorphic bloom, fine 35mm grain, deep crushed blacks, warm amber and molten gold light, jungle-green shadows, volumetric haze, suspended dust and pollen, aged brass and raw bamboo, hand-woven macrame, tropical foliage silhouettes, dark reflective water, centered symmetrical composition, temple-like architecture, hypnotic and ceremonial mood. No text, no lettering, no logo, no watermark, no interface. No neon cyberpunk, no cold blue light, no strobe, no visible crowd faces. Wide cinematic 16:9 frame for a large LED screen: horizon-led composition, subject on the central axis, generous negative space in the upper third, foreground reflections along the bottom edge, readable at six meters distance.\n\nCAMERA MOVE — ONE SLOW LATERAL TRAVELLING TO THE LEFT. The whole camera body slides sideways to the LEFT on a smooth rail, staying parallel to the subject, covering a short distance — roughly a quarter of a metre, a slow walking pace — for the entire clip at an even speed. Because the camera translates and does not rotate, the parallax between foreground and background shifts very slowly and reveals depth; the subject stays the same size and the same distance away. The lens does not rotate, does not zoom in, does not zoom out, does not change focal length, and the horizon stays level.\n\nOne single camera move for the whole clip, at a constant slow speed from the first frame to the last: no acceleration, no ease-in, no ease-out, no snap, no second move, no handheld shake, no roll, no focus pull, no lens change. Perspective stays photographic and coherent: no warping, no morphing, no bending of straight lines, no flicker, no exposure jump. No cuts, no scene change, no fades, no speed ramp, no text, no lettering, no logo, no watermark, no interface. The scene keeps living at the same time — mist drifting, candles flickering, particles and pollen floating, cloth and macrame swinging very slowly, water rippling, smoke curling through the beams — but the light direction, palette and exposure stay constant. Photoreal cinematic, shallow depth of field, fine 35mm film grain."
+  },
+  "_meta": {
+   "title": "Codificando Prompt (+)"
+  }
+ },
+ "c1_6": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "clip": [
+    "2",
+    0
+   ],
+   "text": "camera shake, handheld, jump cut, scene change, morphing, warping, flicker, text, watermark, subtitles, logo"
+  },
+  "_meta": {
+   "title": "Codificando Prompt (-)"
+  }
+ },
+ "c1_7": {
+  "class_type": "LTXVConditioning",
+  "inputs": {
+   "positive": [
+    "c1_5",
+    0
+   ],
+   "negative": [
+    "c1_6",
+    0
+   ],
+   "frame_rate": 24.0
+  },
+  "_meta": {
+   "title": "Condicionando LTX-2.5"
+  }
+ },
+ "c1_8": {
+  "class_type": "LoadImage",
+  "inputs": {
+   "image": "Handcrafted_altar_in_jungle_clea…_ea0e68f1.jpg"
+  },
+  "_meta": {
+   "title": "Cargando Imagen"
+  }
+ },
+ "c1_9": {
+  "class_type": "ResizeImageMaskNode",
+  "inputs": {
+   "input": [
+    "c1_8",
+    0
+   ],
+   "resize_type": "scale dimensions",
+   "resize_type.width": 1280,
+   "resize_type.height": 704,
+   "resize_type.crop": "center",
+   "scale_method": "lanczos"
+  },
+  "_meta": {
+   "title": "Redimensionando Imagen"
+  }
+ },
+ "c1_10": {
+  "class_type": "LTXVPreprocess",
+  "inputs": {
+   "image": [
+    "c1_9",
+    0
+   ],
+   "img_compression": 18
+  },
+  "_meta": {
+   "title": "Preprocesando Frame"
+  }
+ },
+ "c1_11": {
+  "class_type": "EmptyLTXVLatentVideo",
+  "inputs": {
+   "width": 1280,
+   "height": 704,
+   "length": 241,
+   "batch_size": 1
+  },
+  "_meta": {
+   "title": "Creando Latente Video"
+  }
+ },
+ "c1_12": {
+  "class_type": "LTXVImgToVideoInplace",
+  "inputs": {
+   "vae": [
+    "3",
+    0
+   ],
+   "image": [
+    "c1_10",
+    0
+   ],
+   "latent": [
+    "c1_11",
+    0
+   ],
+   "strength": 0.85,
+   "bypass": false
+  },
+  "_meta": {
+   "title": "Inyectando Imagen (Stage 1)"
+  }
+ },
+ "c1_40": {
+  "class_type": "LoadImage",
+  "inputs": {
+   "image": "Handcrafted_altar_in_jungle_clea…_ea0e68f1__travelling-izq.png"
+  },
+  "_meta": {
+   "title": "Ultimo frame (guia)"
+  }
+ },
+ "c1_41": {
+  "class_type": "ResizeImageMaskNode",
+  "inputs": {
+   "input": [
+    "c1_40",
+    0
+   ],
+   "resize_type": "scale dimensions",
+   "resize_type.width": 1280,
+   "resize_type.height": 704,
+   "resize_type.crop": "center",
+   "scale_method": "lanczos"
+  },
+  "_meta": {
+   "title": "Ultimo frame · resize"
+  }
+ },
+ "c1_42": {
+  "class_type": "LTXVPreprocess",
+  "inputs": {
+   "image": [
+    "c1_41",
+    0
+   ],
+   "img_compression": 18
+  },
+  "_meta": {
+   "title": "Ultimo frame · preprocess"
+  }
+ },
+ "c1_43": {
+  "class_type": "LTXVAddGuide",
+  "inputs": {
+   "positive": [
+    "c1_7",
+    0
+   ],
+   "negative": [
+    "c1_7",
+    1
+   ],
+   "vae": [
+    "3",
+    0
+   ],
+   "latent": [
+    "c1_12",
+    0
+   ],
+   "image": [
+    "c1_42",
+    0
+   ],
+   "frame_idx": -1,
+   "strength": 0.75
+  },
+  "_meta": {
+   "title": "Guia ultimo frame"
+  }
+ },
+ "c1_13": {
+  "class_type": "LTXVEmptyLatentAudio",
+  "inputs": {
+   "frames_number": 241,
+   "frame_rate": 24.0,
+   "batch_size": 1,
+   "audio_vae": [
+    "4",
+    0
+   ]
+  },
+  "_meta": {
+   "title": "Creando Latente Audio"
+  }
+ },
+ "c1_14": {
+  "class_type": "LTXVConcatAVLatent",
+  "inputs": {
+   "video_latent": [
+    "c1_43",
+    2
+   ],
+   "audio_latent": [
+    "c1_13",
+    0
+   ]
+  },
+  "_meta": {
+   "title": "Uniendo Latentes A/V"
+  }
+ },
+ "c1_15": {
+  "class_type": "KSamplerSelect",
+  "inputs": {
+   "sampler_name": "euler_ancestral"
+  },
+  "_meta": {}
+ },
+ "c1_16": {
+  "class_type": "ManualSigmas",
+  "inputs": {
+   "sigmas": "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0"
+  },
+  "_meta": {}
+ },
+ "c1_17": {
+  "class_type": "RandomNoise",
+  "inputs": {
+   "noise_seed": 777000
+  },
+  "_meta": {}
+ },
+ "c1_18": {
+  "class_type": "LTXVDualCFGGuider",
+  "inputs": {
+   "model": [
+    "1",
+    0
+   ],
+   "positive": [
+    "c1_43",
+    0
+   ],
+   "negative": [
+    "c1_43",
+    1
+   ],
+   "video_cfg": 1.0,
+   "audio_cfg": 1.0
+  },
+  "_meta": {}
+ },
+ "c1_19": {
+  "class_type": "SamplerCustomAdvanced",
+  "inputs": {
+   "noise": [
+    "c1_17",
+    0
+   ],
+   "guider": [
+    "c1_18",
+    0
+   ],
+   "sampler": [
+    "c1_15",
+    0
+   ],
+   "sigmas": [
+    "c1_16",
+    0
+   ],
+   "latent_image": [
+    "c1_14",
+    0
+   ]
+  },
+  "_meta": {
+   "title": "Etapa 1 · Sampling (8 pasos)"
+  }
+ },
+ "c1_20": {
+  "class_type": "LTXVSeparateAVLatent",
+  "inputs": {
+   "av_latent": [
+    "c1_19",
+    0
+   ]
+  },
+  "_meta": {
+   "title": "Separando Audio/Video"
+  }
+ },
+ "c1_44": {
+  "class_type": "LTXVCropGuides",
+  "inputs": {
+   "positive": [
+    "c1_43",
+    0
+   ],
+   "negative": [
+    "c1_43",
+    1
+   ],
+   "latent": [
+    "c1_20",
+    0
+   ]
+  },
+  "_meta": {
+   "title": "Crop de guias"
+  }
+ },
+ "c1_31": {
+  "class_type": "VAEDecodeTiled",
+  "inputs": {
+   "samples": [
+    "c1_44",
+    2
+   ],
+   "vae": [
+    "3",
+    0
+   ],
+   "tile_size": 512,
+   "overlap": 64,
+   "temporal_size": 64,
+   "temporal_overlap": 16
+  },
+  "_meta": {
+   "title": "Decodificando Video (VAE Tiled)"
+  }
+ },
+ "c1_33": {
+  "class_type": "CreateVideo",
+  "inputs": {
+   "images": [
+    "c1_31",
+    0
+   ],
+   "fps": 24.0,
+   "bit_depth": 8,
+   "color_space": "sRGB",
+   "codec": "none"
+  },
+  "_meta": {
+   "title": "Ensamblando A/V"
+  }
+ },
+ "c1_34": {
+  "class_type": "SaveVideo",
+  "inputs": {
+   "video": [
+    "c1_33",
+    0
+   ],
+   "filename_prefix": "proto2f/c01",
+   "format": "mp4",
+   "format.codec": "h264",
+   "format.codec.encoding": "re-encode",
+   "format.codec.encoding.crf": 17.0
+  },
+  "_meta": {
+   "title": "Codificando y Guardando MP4"
+  }
+ },
+ "c2_5": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "clip": [
+    "2",
+    0
+   ],
+   "text": "Seamless loop with a locked-off camera: the clip starts and ends on exactly the same frame, the camera does not move. Cluster of brass filigree lanterns at different depths, warm bulbs inside, a chain of bokeh falling into darkness, one lantern swinging. A handcrafted altar of raw bamboo, clay pots, brass bowls, cut fruit, dried flowers and heavy hand-dyed ochre linen, lit only by candles and hanging brass lanterns, set into dense tropical foliage at the edge of a dark jungle clearing; craft over spectacle, honest artisanal textures, warm flickering light, slight smoke. Photoreal cinematic still, medium-format quality, 35mm lens, f/2.8, shallow depth of field, soft anamorphic bloom, fine 35mm grain, deep crushed blacks, warm amber and molten gold light, jungle-green shadows, volumetric haze, suspended dust and pollen, aged brass and raw bamboo, hand-woven macrame, tropical foliage silhouettes, dark reflective water, centered symmetrical composition, temple-like architecture, hypnotic and ceremonial mood. No text, no lettering, no logo, no watermark, no interface. No neon cyberpunk, no cold blue light, no strobe, no visible crowd faces. Wide cinematic 16:9 frame for a large LED screen: horizon-led composition, subject on the central axis, generous negative space in the upper third, foreground reflections along the bottom edge, readable at six meters distance.\n\nSEAMLESS LOOP — LOCKED-OFF CAMERA. The camera is fixed on a tripod and does not move for the whole clip: same framing, same horizon, same focal length, same subject size in the first frame and in the last frame, no pan, no tilt, no dolly, no orbit, no parallax, no handheld shake, no zoom in, no zoom out. The clip is designed to repeat endlessly, so the motion inside the frame is cyclic and comes back to where it started: the mist drifts and returns, the candles flicker and settle, the smoke curls and settles back, the lanterns swing and come back to rest, particles float and return, the light breathes brighter and then dimmer, ending exactly on the brightness of the first frame. The last frame is visually identical to the first frame, so the loop point is invisible.\n\nOne single camera move for the whole clip, at a constant slow speed from the first frame to the last: no acceleration, no ease-in, no ease-out, no snap, no second move, no handheld shake, no roll, no focus pull, no lens change. Perspective stays photographic and coherent: no warping, no morphing, no bending of straight lines, no flicker, no exposure jump. No cuts, no scene change, no fades, no speed ramp, no text, no lettering, no logo, no watermark, no interface. The scene keeps living at the same time — mist drifting, candles flickering, particles and pollen floating, cloth and macrame swinging very slowly, water rippling, smoke curling through the beams — but the light direction, palette and exposure stay constant. Photoreal cinematic, shallow depth of field, fine 35mm film grain."
+  },
+  "_meta": {
+   "title": "Codificando Prompt (+)"
+  }
+ },
+ "c2_6": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "clip": [
+    "2",
+    0
+   ],
+   "text": "camera shake, handheld, jump cut, scene change, morphing, warping, flicker, text, watermark, subtitles, logo"
+  },
+  "_meta": {
+   "title": "Codificando Prompt (-)"
+  }
+ },
+ "c2_7": {
+  "class_type": "LTXVConditioning",
+  "inputs": {
+   "positive": [
+    "c2_5",
+    0
+   ],
+   "negative": [
+    "c2_6",
+    0
+   ],
+   "frame_rate": 24.0
+  },
+  "_meta": {
+   "title": "Condicionando LTX-2.5"
+  }
+ },
+ "c2_8": {
+  "class_type": "LoadImage",
+  "inputs": {
+   "image": "Lanterns_hanging_in_jungle_clearing_35916448.jpg"
+  },
+  "_meta": {
+   "title": "Cargando Imagen"
+  }
+ },
+ "c2_9": {
+  "class_type": "ResizeImageMaskNode",
+  "inputs": {
+   "input": [
+    "c2_8",
+    0
+   ],
+   "resize_type": "scale dimensions",
+   "resize_type.width": 1280,
+   "resize_type.height": 704,
+   "resize_type.crop": "center",
+   "scale_method": "lanczos"
+  },
+  "_meta": {
+   "title": "Redimensionando Imagen"
+  }
+ },
+ "c2_10": {
+  "class_type": "LTXVPreprocess",
+  "inputs": {
+   "image": [
+    "c2_9",
+    0
+   ],
+   "img_compression": 18
+  },
+  "_meta": {
+   "title": "Preprocesando Frame"
+  }
+ },
+ "c2_11": {
+  "class_type": "EmptyLTXVLatentVideo",
+  "inputs": {
+   "width": 1280,
+   "height": 704,
+   "length": 241,
+   "batch_size": 1
+  },
+  "_meta": {
+   "title": "Creando Latente Video"
+  }
+ },
+ "c2_12": {
+  "class_type": "LTXVImgToVideoInplace",
+  "inputs": {
+   "vae": [
+    "3",
+    0
+   ],
+   "image": [
+    "c2_10",
+    0
+   ],
+   "latent": [
+    "c2_11",
+    0
+   ],
+   "strength": 0.85,
+   "bypass": false
+  },
+  "_meta": {
+   "title": "Inyectando Imagen (Stage 1)"
+  }
+ },
+ "c2_40": {
+  "class_type": "LoadImage",
+  "inputs": {
+   "image": "Lanterns_hanging_in_jungle_clearing_35916448.jpg"
+  },
+  "_meta": {
+   "title": "Ultimo frame (guia)"
+  }
+ },
+ "c2_41": {
+  "class_type": "ResizeImageMaskNode",
+  "inputs": {
+   "input": [
+    "c2_40",
+    0
+   ],
+   "resize_type": "scale dimensions",
+   "resize_type.width": 1280,
+   "resize_type.height": 704,
+   "resize_type.crop": "center",
+   "scale_method": "lanczos"
+  },
+  "_meta": {
+   "title": "Ultimo frame · resize"
+  }
+ },
+ "c2_42": {
+  "class_type": "LTXVPreprocess",
+  "inputs": {
+   "image": [
+    "c2_41",
+    0
+   ],
+   "img_compression": 18
+  },
+  "_meta": {
+   "title": "Ultimo frame · preprocess"
+  }
+ },
+ "c2_43": {
+  "class_type": "LTXVAddGuide",
+  "inputs": {
+   "positive": [
+    "c2_7",
+    0
+   ],
+   "negative": [
+    "c2_7",
+    1
+   ],
+   "vae": [
+    "3",
+    0
+   ],
+   "latent": [
+    "c2_12",
+    0
+   ],
+   "image": [
+    "c2_42",
+    0
+   ],
+   "frame_idx": -1,
+   "strength": 0.4
+  },
+  "_meta": {
+   "title": "Guia ultimo frame"
+  }
+ },
+ "c2_13": {
+  "class_type": "LTXVEmptyLatentAudio",
+  "inputs": {
+   "frames_number": 241,
+   "frame_rate": 24.0,
+   "batch_size": 1,
+   "audio_vae": [
+    "4",
+    0
+   ]
+  },
+  "_meta": {
+   "title": "Creando Latente Audio"
+  }
+ },
+ "c2_14": {
+  "class_type": "LTXVConcatAVLatent",
+  "inputs": {
+   "video_latent": [
+    "c2_43",
+    2
+   ],
+   "audio_latent": [
+    "c2_13",
+    0
+   ]
+  },
+  "_meta": {
+   "title": "Uniendo Latentes A/V"
+  }
+ },
+ "c2_15": {
+  "class_type": "KSamplerSelect",
+  "inputs": {
+   "sampler_name": "euler_ancestral"
+  },
+  "_meta": {}
+ },
+ "c2_16": {
+  "class_type": "ManualSigmas",
+  "inputs": {
+   "sigmas": "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0"
+  },
+  "_meta": {}
+ },
+ "c2_17": {
+  "class_type": "RandomNoise",
+  "inputs": {
+   "noise_seed": 777000
+  },
+  "_meta": {}
+ },
+ "c2_18": {
+  "class_type": "LTXVDualCFGGuider",
+  "inputs": {
+   "model": [
+    "1",
+    0
+   ],
+   "positive": [
+    "c2_43",
+    0
+   ],
+   "negative": [
+    "c2_43",
+    1
+   ],
+   "video_cfg": 1.0,
+   "audio_cfg": 1.0
+  },
+  "_meta": {}
+ },
+ "c2_19": {
+  "class_type": "SamplerCustomAdvanced",
+  "inputs": {
+   "noise": [
+    "c2_17",
+    0
+   ],
+   "guider": [
+    "c2_18",
+    0
+   ],
+   "sampler": [
+    "c2_15",
+    0
+   ],
+   "sigmas": [
+    "c2_16",
+    0
+   ],
+   "latent_image": [
+    "c2_14",
+    0
+   ]
+  },
+  "_meta": {
+   "title": "Etapa 1 · Sampling (8 pasos)"
+  }
+ },
+ "c2_20": {
+  "class_type": "LTXVSeparateAVLatent",
+  "inputs": {
+   "av_latent": [
+    "c2_19",
+    0
+   ]
+  },
+  "_meta": {
+   "title": "Separando Audio/Video"
+  }
+ },
+ "c2_44": {
+  "class_type": "LTXVCropGuides",
+  "inputs": {
+   "positive": [
+    "c2_43",
+    0
+   ],
+   "negative": [
+    "c2_43",
+    1
+   ],
+   "latent": [
+    "c2_20",
+    0
+   ]
+  },
+  "_meta": {
+   "title": "Crop de guias"
+  }
+ },
+ "c2_31": {
+  "class_type": "VAEDecodeTiled",
+  "inputs": {
+   "samples": [
+    "c2_44",
+    2
+   ],
+   "vae": [
+    "3",
+    0
+   ],
+   "tile_size": 512,
+   "overlap": 64,
+   "temporal_size": 64,
+   "temporal_overlap": 16
+  },
+  "_meta": {
+   "title": "Decodificando Video (VAE Tiled)"
+  }
+ },
+ "c2_33": {
+  "class_type": "CreateVideo",
+  "inputs": {
+   "images": [
+    "c2_31",
+    0
+   ],
+   "fps": 24.0,
+   "bit_depth": 8,
+   "color_space": "sRGB",
+   "codec": "none"
+  },
+  "_meta": {
+   "title": "Ensamblando A/V"
+  }
+ },
+ "c2_34": {
+  "class_type": "SaveVideo",
+  "inputs": {
+   "video": [
+    "c2_33",
+    0
+   ],
+   "filename_prefix": "proto2f/c02",
+   "format": "mp4",
+   "format.codec": "h264",
+   "format.codec.encoding": "re-encode",
+   "format.codec.encoding.crf": 17.0
+  },
+  "_meta": {
+   "title": "Codificando y Guardando MP4"
+  }
+ }
+}

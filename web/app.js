@@ -786,6 +786,26 @@
         $("#disk-free").textContent = `${h.free_gb} GB libres`;
       }
 
+      // Progreso del LOTE: el de la cola no sirve cuando el driver corre por fuera
+      try {
+        const lo = await api("/api/lote");
+        state.lote = lo;
+        const el = $("#lote-text");
+        if (el && lo && lo.ok) {
+          const eta = lo.eta_h != null ? ` · ETA ${lo.eta_h} h` : "";
+          el.textContent = `lote ${lo.hecho}/${lo.total} · ${lo.pct}%` +
+            (lo.corriendo ? ` · ${lo.corriendo} en curso` : "") +
+            (lo.error ? ` · ${lo.error} err` : "") + eta;
+          const pill = $("#lote-pill");
+          if (pill) {
+            pill.title = `Lote NOMADE · ${lo.archivo}\n` +
+              `hechos ${lo.hecho} · pendientes ${lo.pendiente} · en curso ${lo.corriendo} · errores ${lo.error}\n` +
+              (lo.ritmo_s ? `ritmo ${Math.round(lo.ritmo_s)} s/clip` : "") +
+              (lo.ultimo ? ` · ultimo ${lo.ultimo}` : "");
+          }
+        }
+      } catch (_) {}
+
       const commit = h.ram?.commit_free_gb != null ? ` · Commit ${h.ram.commit_free_gb}G` : "";
       if ($("#health-sub")) {
         $("#health-sub").textContent = `ComfyUI :8188 · ${h.active_unet || "LTX-2.5"}${commit}`;
@@ -1296,10 +1316,26 @@
       state.paused = Boolean(q.paused);
       state.jobs = jRes.items || [];
 
-      $("#cnt-active").textContent = String(q.active || 0);
-      $("#cnt-pending").textContent = String(q.pending || 0);
-      $("#cnt-done").textContent = String(q.done || 0);
-      $("#cnt-failed").textContent = String((q.failed || 0) + (q.cancelled || 0));
+      const cobrando = Number(q.active || 0) + Number(q.pending || 0) > 0;
+      // Si la cola del dashboard esta vacia pero el LOTE esta corriendo por fuera
+      // (batch_grupo.py / batch.py tick), los contadores muestran el lote: son los
+      // numeros que importan. Con jobs propios en la cola, mandan los de la cola.
+      const lo = state.lote;
+      if (!cobrando && lo && lo.ok && (lo.corriendo > 0 || lo.pendiente > 0)) {
+        $("#cnt-active").textContent = String(lo.corriendo || 0);
+        $("#cnt-pending").textContent = String(lo.pendiente || 0);
+        $("#cnt-done").textContent = String(lo.hecho || 0);
+        $("#cnt-failed").textContent = String(lo.error || 0);
+        document.querySelectorAll(".counters .cnt").forEach((el) => {
+          if (!el.dataset.loteTitulo) el.dataset.loteTitulo = el.title || "";
+          el.title = "LOTE · " + el.dataset.loteTitulo;
+        });
+      } else {
+        $("#cnt-active").textContent = String(q.active || 0);
+        $("#cnt-pending").textContent = String(q.pending || 0);
+        $("#cnt-done").textContent = String(q.done || 0);
+        $("#cnt-failed").textContent = String((q.failed || 0) + (q.cancelled || 0));
+      }
 
       const pauseBtn = $("#btn-pause-resume");
       if (pauseBtn) {

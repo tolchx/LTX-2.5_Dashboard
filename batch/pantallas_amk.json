@@ -1,0 +1,126 @@
+{
+ "canvas": [
+  2160,
+  4096
+ ],
+ "nota": "Geometria medida el 2026-11-13 sobre AMK_2025_v1.png (deteccion por color + rotulos del plano: PORTAL FRONT 1529x330, STAGE BACK 1066x767, STAGE FRONT 1080x192). Cada pantalla tiene un bioma asignado.",
+ "pantallas": [
+  {
+   "n": 1,
+   "nombre": "tira_01_izq_extrema",
+   "x": 4,
+   "y": 0,
+   "w": 77,
+   "h": 2884,
+   "bioma": "01_dosel"
+  },
+  {
+   "n": 2,
+   "nombre": "tira_02_izq",
+   "x": 519,
+   "y": 0,
+   "w": 142,
+   "h": 1019,
+   "bioma": "01_dosel"
+  },
+  {
+   "n": 3,
+   "nombre": "tira_03_der",
+   "x": 1510,
+   "y": 0,
+   "w": 136,
+   "h": 1019,
+   "bioma": "01_dosel"
+  },
+  {
+   "n": 4,
+   "nombre": "tira_04_alta",
+   "x": 951,
+   "y": 0,
+   "w": 268,
+   "h": 1102,
+   "bioma": "01_dosel"
+  },
+  {
+   "n": 5,
+   "nombre": "tira_05_alta_izq",
+   "x": 156,
+   "y": 690,
+   "w": 154,
+   "h": 2284,
+   "bioma": "01_dosel"
+  },
+  {
+   "n": 6,
+   "nombre": "tira_06_central_izq",
+   "x": 709,
+   "y": 303,
+   "w": 221,
+   "h": 2206,
+   "bioma": "01_dosel"
+  },
+  {
+   "n": 7,
+   "nombre": "tira_07_central_der",
+   "x": 1237,
+   "y": 303,
+   "w": 225,
+   "h": 2206,
+   "bioma": "01_dosel"
+  },
+  {
+   "n": 8,
+   "nombre": "tira_08_der_alta",
+   "x": 1853,
+   "y": 0,
+   "w": 306,
+   "h": 2982,
+   "bioma": "01_dosel"
+  },
+  {
+   "n": 9,
+   "nombre": "cuadrado_izq",
+   "x": 0,
+   "y": 3176,
+   "w": 460,
+   "h": 426,
+   "bioma": "03_lianas"
+  },
+  {
+   "n": 10,
+   "nombre": "cuadrado_der",
+   "x": 1696,
+   "y": 3184,
+   "w": 461,
+   "h": 426,
+   "bioma": "03_lianas"
+  },
+  {
+   "n": 11,
+   "nombre": "PORTAL_FRONT",
+   "x": 304,
+   "y": 2826,
+   "w": 1554,
+   "h": 336,
+   "bioma": "06_pantano"
+  },
+  {
+   "n": 12,
+   "nombre": "STAGE_BACK",
+   "x": 548,
+   "y": 3158,
+   "w": 1066,
+   "h": 767,
+   "bioma": "02_helechos"
+  },
+  {
+   "n": 13,
+   "nombre": "STAGE_FRONT",
+   "x": 577,
+   "y": 3904,
+   "w": 1080,
+   "h": 192,
+   "bioma": "06_pantano"
+  }
+ ]
+}

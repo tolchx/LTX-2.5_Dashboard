@@ -24,7 +24,7 @@
   "minimax_shift_audio": 3.0,
   "default_negative_prompt": "pc game, console game, video game, cartoon, childish, ugly, blurry, watermark, text, static, frozen",
   "default_fps": 24,
-  "default_duration": 5,
+  "default_duration": 5.0,
   "default_preset": "704p",
   "default_two_stage": true,
   "default_vae_mode": "diff",

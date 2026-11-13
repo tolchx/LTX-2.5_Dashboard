@@ -1,0 +1,28 @@
+{"t": 7.67, "hits": ["vae_req"], "line": "\u001b[32m[INFO]\u001b[0m Requested to load CausalDiffusionVAE"}
+{"t": 8.42, "hits": ["te_loaded"], "line": "\u001b[32m[INFO]\u001b[0m loaded completely;  1403.92 MB loaded, full load: True"}
+{"t": 46.79, "hits": ["done"], "line": "\u001b[32m[INFO]\u001b[0m \u001b[32mPrompt executed in 209.23 seconds\u001b[0m"}
+{"t": 63.94, "hits": ["got_prompt"], "line": "\u001b[32m[INFO]\u001b[0m got prompt"}
+{"t": 64.09, "hits": ["policy"], "line": "\u001b[32m[INFO]\u001b[0m Model storage policy: fast_disk=False paths=['D:\\\\LTX-2.5_Dashboard\\\\models\\\\vae\\\\ltx-2.5-video-vae-bf16.safetensors']"}
+{"t": 74.61, "hits": ["policy"], "line": "\u001b[32m[INFO]\u001b[0m Model storage policy: fast_disk=False paths=['D:\\\\LTX-2.5_Dashboard\\\\models\\\\vae\\\\ltx-2.5-audio-vae-bf16.safetensors']"}
+{"t": 77.32, "hits": ["vae_req"], "line": "\u001b[32m[INFO]\u001b[0m Requested to load CausalDiffusionVAE"}
+{"t": 77.92, "hits": ["te_loaded"], "line": "\u001b[32m[INFO]\u001b[0m loaded completely;  1403.92 MB loaded, full load: True"}
+{"t": 78.07, "hits": ["te_encode"], "line": "\u001b[32m[INFO]\u001b[0m Using MixedPrecisionOps for text encoder"}
+{"t": 80.63, "hits": ["policy"], "line": "\u001b[32m[INFO]\u001b[0m Model storage policy: fast_disk=False paths=['D:\\\\LTX-2.5_Dashboard\\\\models\\\\text_encoders\\\\gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safe"}
+{"t": 89.95, "hits": ["te_load_req", "unet_load_req"], "line": "\u001b[32m[INFO]\u001b[0m Requested to load LTXAVTEModel_"}
+{"t": 108.6, "hits": ["te_loaded"], "line": "\u001b[32m[INFO]\u001b[0m loaded completely; 18579.87 MB usable, 14613.55 MB loaded, full load: True"}
+{"t": 114.91, "hits": ["gguf"], "line": "\u001b[32m[INFO]\u001b[0m gguf qtypes: F32 (2577), BF16 (332), Q3_K (284), Q5_K (297), Q6_K (226), Q8_0 (90), Q4_K (311), Q2_K (232)"}
+{"t": 115.36, "hits": ["policy"], "line": "\u001b[32m[INFO]\u001b[0m Model storage policy: fast_disk=False paths=[]"}
+{"t": 115.97, "hits": ["unet_load_req"], "line": "\u001b[32m[INFO]\u001b[0m Requested to load LTXAV"}
+{"t": 147.46, "hits": ["te_loaded"], "line": "\u001b[32m[INFO]\u001b[0m loaded completely; 16281.75 MB usable, 13615.03 MB loaded, full load: True"}
+{"t": 162.86, "hits": ["step0"], "line": "0%|          | 0/8 [00:00<?, ?it/s]"}
+{"t": 259.35, "hits": ["vae_req"], "line": "\u001b[32m[INFO]\u001b[0m Requested to load CausalDiffusionVAE"}
+{"t": 260.1, "hits": ["te_loaded"], "line": "\u001b[32m[INFO]\u001b[0m loaded completely;  1403.92 MB loaded, full load: True"}
+{"t": 299.87, "hits": ["done"], "line": "\u001b[32m[INFO]\u001b[0m \u001b[32mPrompt executed in 235.92 seconds\u001b[0m"}
+{"t": 303.63, "hits": ["got_prompt"], "line": "\u001b[32m[INFO]\u001b[0m got prompt"}
+{"t": 303.78, "hits": ["policy"], "line": "\u001b[32m[INFO]\u001b[0m Model storage policy: fast_disk=False paths=['D:\\\\LTX-2.5_Dashboard\\\\models\\\\vae\\\\ltx-2.5-video-vae-bf16.safetensors']"}
+{"t": 314.15, "hits": ["policy"], "line": "\u001b[32m[INFO]\u001b[0m Model storage policy: fast_disk=False paths=['D:\\\\LTX-2.5_Dashboard\\\\models\\\\vae\\\\ltx-2.5-audio-vae-bf16.safetensors']"}
+{"t": 316.71, "hits": ["vae_req"], "line": "\u001b[32m[INFO]\u001b[0m Requested to load CausalDiffusionVAE"}
+{"t": 317.16, "hits": ["te_loaded"], "line": "\u001b[32m[INFO]\u001b[0m loaded completely;  1403.92 MB loaded, full load: True"}
+{"t": 317.31, "hits": ["te_encode"], "line": "\u001b[32m[INFO]\u001b[0m Using MixedPrecisionOps for text encoder"}
+{"t": 320.02, "hits": ["policy"], "line": "\u001b[32m[INFO]\u001b[0m Model storage policy: fast_disk=False paths=['D:\\\\LTX-2.5_Dashboard\\\\models\\\\text_encoders\\\\gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safe"}
+{"t": 329.19, "hits": ["te_load_req", "unet_load_req"], "line": "\u001b[32m[INFO]\u001b[0m Requested to load LTXAVTEModel_"}

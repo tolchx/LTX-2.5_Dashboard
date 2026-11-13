@@ -287,8 +287,13 @@ def _submit_chunk(job: dict[str, Any], image_path: str | None) -> str:
         video_vae = cfg["video_vae_conv_name"] if vae_mode == "conv" else cfg["video_vae_name"]
 
         uploaded_name = None
+        uploaded_last = None
         if job.get("task") != "t2v" and image_path:
             uploaded_name = ltx_comfy.upload_image(comfy_url, image_path)
+        last_img = job.get("last_image")
+        if (last_img and os.path.isfile(last_img) and job.get("task") != "t2v"
+                and not bool(job.get("two_stage", True))):
+            uploaded_last = ltx_comfy.upload_image(comfy_url, last_img)
 
         ltx_unet = job.get("unet_name") or ""
         if not ltx_unet or "minimax" in ltx_unet.lower():
@@ -318,7 +323,10 @@ def _submit_chunk(job: dict[str, Any], image_path: str | None) -> str:
             include_audio=bool(job.get("include_audio", True)),
             img_compression=int(job.get("img_compression", cfg.get("default_img_compression", 18))),
             crf=int(job.get("crf", cfg.get("default_crf", 17))),
+            video_cfg=float(job.get("video_cfg") or 1.0),
             prefix=f"ltx25/{job['id'][:10]}_c{chunk_idx}",
+            last_image_name=uploaded_last,
+            guide_strength=float(job.get("guide_strength") or 0.7),
         )
 
     pid = ltx_comfy.submit(comfy_url, wf, CLIENT_ID)
@@ -398,6 +406,11 @@ def _process_running(job: dict[str, Any]) -> None:
         store.upsert_job(job)
         return
 
+    # Si el MP4 ya esta en su destino (un cierre anterior se guardo a medias), cerrarlo.
+    if os.path.isfile(job.get("output") or ""):
+        _finalize_success(job)
+        return
+
     try:
         st_str, outputs, err_msg = ltx_comfy.get_result(comfy_url, pid)
     except Exception:
@@ -406,6 +419,20 @@ def _process_running(job: dict[str, Any]) -> None:
 
     if st_str is None:
         if not ltx_comfy.is_queued(comfy_url, pid):
+            # Red de seguridad: si ComfyUI se reinicio, el prompt ya no esta en
+            # /history aunque el clip este en disco. Se busca por el prefijo del job
+            # (f"{id[:10]}_c{chunk}") y se cierra: sin esto el job queda en 99 % para
+            # siempre y frena toda la cola.
+            huerfano = ltx_comfy.buscar_por_prefijo(
+                comfy_out_dir, f"{job['id'][:10]}_c{max(int(job.get('chunk_idx') or 1), 1)}")
+            if huerfano:
+                try:
+                    os.makedirs(os.path.dirname(job["output"]), exist_ok=True)
+                    shutil.move(huerfano, job["output"])
+                    _finalize_success(job)
+                    return
+                except OSError:
+                    pass
             # Último chequeo por si acaba de moverse de queue a history entre calls
             try:
                 st_str, outputs, err_msg = ltx_comfy.get_result(comfy_url, pid)
